@@ -34,7 +34,8 @@ mysql_password =
 mysql_database = 
 ```
 Once done, Press the Escape/ESC key on your keyboard and then type:
-```:x
+```
+:x
 ```
 And press the RETURN/ENTER key on your keyboard. This will save the file including your changes.
 
