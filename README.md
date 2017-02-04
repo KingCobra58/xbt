@@ -19,7 +19,5 @@ Enter the following commands in a terminal. Be patient while g++ is running, it'
 ```
 git clone https://github.com/KingCobra58/xbt
 cd xbt/Tracker
-cmake .
-make
-cp xbt_tracker.conf.default xbt_tracker.conf
+./make.sh
 ```
