@@ -15,6 +15,7 @@ bool is_private_ipa(int a);
 int merkle_tree_size(int v);
 std::string mk_sname(std::string);
 std::string n(long long);
+std::string n2a(long long v, const char* postfix = NULL);
 std::string native_slashes(const std::string&);
 std::string hex_decode(str_ref);
 std::string hex_encode(int l, int v);
@@ -24,7 +25,6 @@ std::string peer_id2a(const std::string&);
 std::string time2a(time_t);
 std::string uri_decode(str_ref);
 std::string uri_encode(str_ref);
-int xbt_atoi(const std::string&);
 void xbt_syslog(const std::string&);
 std::string xbt_version2a(int);
 

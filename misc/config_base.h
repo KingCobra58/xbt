@@ -6,11 +6,11 @@
 #include <set>
 #include <string>
 
-class Cconfig_base
+class config_base_t
 {
 public:
 	template <class T>
-	struct t_attribute
+	struct attribute_t
 	{
 		const char* key;
 		T* value;
@@ -18,35 +18,30 @@ public:
 	};
 
 	template <class T>
-	class t_attributes: public std::map<std::string, t_attribute<T> >
-	{
-	};
+	using attributes_t = std::map<std::string, attribute_t<T>, std::less<>>;
 
-	virtual int set(const std::string& name, const std::string& value)
+	virtual int set(std::string_view name, std::string_view value)
 	{
-		t_attributes<std::string>::iterator i = m_attributes_string.find(name);
-		if (i != m_attributes_string.end())
-			*i->second.value = value;
+		if (attribute_t<std::string>* i = find_ptr(attributes_string_, name))
+			*i->value = value;
 		else
-			return set(name, atoi(value.c_str()));
+			return set(name, int(to_int(value)));
 		return 0;
 	}
 
-	virtual int set(const std::string& name, int value)
+	virtual int set(std::string_view name, int value)
 	{
-		t_attributes<int>::iterator i = m_attributes_int.find(name);
-		if (i != m_attributes_int.end())
-			*i->second.value = value;
+		if (attribute_t<int>* i = find_ptr(attributes_int_, name))
+			*i->value = value;
 		else
 			return set(name, static_cast<bool>(value));
 		return 0;
 	}
 
-	virtual int set(const std::string& name, bool value)
+	virtual int set(std::string_view name, bool value)
 	{
-		t_attributes<bool>::iterator i = m_attributes_bool.find(name);
-		if (i != m_attributes_bool.end())
-			*i->second.value = value;
+		if (attribute_t<bool>* i = find_ptr(attributes_bool_, name))
+			*i->value = value;
 		else
 			return 1;
 		return 0;
@@ -74,23 +69,23 @@ public:
 
 	std::ostream& save(std::ostream& os) const
 	{
-		save_map(os, m_attributes_bool);
-		save_map(os, m_attributes_int);
-		save_map(os, m_attributes_string);
+		save_map(os, attributes_bool_);
+		save_map(os, attributes_int_);
+		save_map(os, attributes_string_);
 		return os;
 	}
 
 protected:
-	t_attributes<bool> m_attributes_bool;
-	t_attributes<int> m_attributes_int;
-	t_attributes<std::string> m_attributes_string;
+	attributes_t<bool> attributes_bool_;
+	attributes_t<int> attributes_int_;
+	attributes_t<std::string> attributes_string_;
 
 	template <class T>
-	void fill_map(t_attribute<T>* attributes, const t_attributes<T>* s, t_attributes<T>& d)
+	void fill_map(attribute_t<T>* attributes, const attributes_t<T>* s, attributes_t<T>& d)
 	{
-		for (t_attribute<T>* i = attributes; i->key; i++)
+		for (attribute_t<T>* i = attributes; i->key; i++)
 		{
-			*i->value = s ? *s->find(i->key)->second.value : i->default_value;
+			*i->value = s ? *find_ref(*s, i->key).value : i->default_value;
 			d[i->key] = *i;
 		}
 	}
@@ -98,11 +93,11 @@ protected:
 	template <class T>
 	void save_map(std::ostream& os, const T& v) const
 	{
-		for (typename T::const_iterator i = v.begin(); i != v.end(); i++)
+		for (auto& i : v)
 		{
-			if (*i->second.value == i->second.default_value)
+			if (*i.second.value == i.second.default_value)
 				os << "# ";
-			os << i->first << " = " << *i->second.value << std::endl;
+			os << i.first << " = " << *i.second.value << "\n";
 		}
 	}
 };

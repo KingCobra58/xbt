@@ -7,12 +7,16 @@
 
 #ifdef WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 
 typedef int socklen_t;
 #else
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <cerrno>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
 
 #define closesocket close
 #define ioctlsocket ioctl
@@ -67,7 +71,7 @@ const int INVALID_SOCKET = -1;
 const int SOCKET_ERROR = -1;
 #endif
 
-class Csocket_source: boost::noncopyable
+class Csocket_source : boost::noncopyable
 {
 public:
 	Csocket_source(SOCKET s)
@@ -94,9 +98,13 @@ public:
 	static std::string error2a(int v);
 	static int get_host(const std::string& name);
 	static std::string inet_ntoa(int h);
+	static std::string inet_ntoa(std::array<unsigned char, 4>);
+	static std::string inet_ntoa(std::array<unsigned char, 16>);
+	static std::string inet_ntoa(in6_addr);
 	static int start_up();
 	int accept(int& h, int& p);
 	int bind(int h, int p);
+	int bind6(int p);
 	int blocking(bool v);
 	void close();
 	int connect(int h, int p);
@@ -104,6 +112,7 @@ public:
 	int getsockopt(int level, int name, int& v);
 	int listen();
 	const Csocket& open(int t, bool blocking = false);
+	const Csocket& open6(int t, bool blocking = false);
 	int recv(mutable_str_ref) const;
 	int recvfrom(mutable_str_ref, sockaddr* a, socklen_t* cb_a) const;
 	int send(str_ref) const;

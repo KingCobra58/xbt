@@ -3,12 +3,7 @@
 #define FD_SETSIZE 1024
 #define NOMINMAX
 
-#ifdef WIN32
-#define atoll _atoi64
-#endif
-
 #include <array>
-#include <boost/foreach.hpp>
 #include <boost/format.hpp>
 #include <boost/ptr_container/ptr_container.hpp>
 #include <boost/utility.hpp>
@@ -30,12 +25,12 @@
 #include <stream_int.h>
 #include <string>
 #include <sys/stat.h>
+#include <unordered_map>
 #include <vector>
 #include <xbt/bt_misc.h>
 #include <xbt/database.h>
 #include <xbt/find_ptr.h>
+#include <xbt/make_query.h>
 #include <xbt/sql_query.h>
 #include <xbt/to_array.h>
 #include <xbt/xcc_z.h>
-
-typedef unsigned char byte;

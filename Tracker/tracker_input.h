@@ -1,13 +1,22 @@
 #pragma once
 
-class Ctracker_input
+class tracker_input_t
 {
 public:
-	void set(const std::string& name, const std::string& value);
+	void set(std::string_view name, std::string_view value);
 	bool valid() const;
-	Ctracker_input();
 
-	enum t_event
+	bool is_seeder() const
+	{
+		return !left_;
+	}
+	
+	bool is_leecher() const
+	{
+		return left_;
+	}
+
+	enum event_t
 	{
 		e_none,
 		e_completed,
@@ -15,17 +24,13 @@ public:
 		e_stopped,
 	};
 
-	typedef std::vector<std::string> t_info_hashes;
-
-	t_event m_event;
-	std::string m_info_hash;
-	t_info_hashes m_info_hashes;
-	int m_ipa;
-	std::array<char, 20> m_peer_id;
-	long long m_downloaded;
-	long long m_left;
-	int m_port;
-	long long m_uploaded;
-	int m_num_want;
-	bool m_compact;
+	event_t event_ = e_none;
+	std::string info_hash_;
+	std::vector<std::string> info_hashes_;
+	std::array<char, 20> peer_id_ = {};
+	long long downloaded_ = 0;
+	long long left_ = 0;
+	long long uploaded_ = 0;
+	std::array<unsigned char, 16> ipv6_ = {};
+	int port_ = 0;
 };

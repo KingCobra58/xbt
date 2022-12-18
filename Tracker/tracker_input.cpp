@@ -1,82 +1,87 @@
 #include "stdafx.h"
 #include "tracker_input.h"
 
-Ctracker_input::Ctracker_input()
+static std::array<char, 16> to_ipv6(uint32_t v)
 {
-	m_compact = false;
-	m_downloaded = 0;
-	m_event = e_none;
-	m_ipa = 0;
-	m_left = 0;
-	m_port = 0;
-	m_uploaded = 0;
-	m_num_want = -1;
+	std::array<char, 16> res = { 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, 0 };
+	memcpy(&res[12], &v, 4);
+	return res;
 }
 
-void Ctracker_input::set(const std::string& name, const std::string& value)
+void tracker_input_t::set(std::string_view name, std::string_view value)
 {
 	if (name.empty())
 		return;
 	switch (name[0])
 	{
-	case 'c':
-		if (name == "compact")
-			m_compact = atoi(value.c_str());
-		break;
 	case 'd':
 		if (name == "downloaded")
-			m_downloaded = atoll(value.c_str());
+			downloaded_ = to_int(value);
 		break;
 	case 'e':
 		if (name == "event")
 		{
 			if (value == "completed")
-				m_event = e_completed;
+				event_ = e_completed;
 			else if (value == "started")
-				m_event = e_started;
+				event_ = e_started;
 			else if (value == "stopped")
-				m_event = e_stopped;
+				event_ = e_stopped;
 			else
-				m_event = e_none;
+				event_ = e_none;
 		}
 		break;
 	case 'i':
 		if (name == "info_hash" && value.size() == 20)
 		{
-			m_info_hash = value;
-			m_info_hashes.push_back(value);
+			info_hash_ = value;
+			info_hashes_.emplace_back(value);
 		}
 		else if (name == "ip")
-			m_ipa = inet_addr(value.c_str());
+		{
+			if (inet_pton(AF_INET, std::string(value).c_str(), &ipv6_[12]) == 1)
+			{
+				ipv6_[0] = 0;
+				ipv6_[1] = 0;
+				ipv6_[2] = 0;
+				ipv6_[3] = 0;
+				ipv6_[4] = 0;
+				ipv6_[5] = 0;
+				ipv6_[6] = 0;
+				ipv6_[7] = 0;
+				ipv6_[8] = 0;
+				ipv6_[9] = 0;
+				ipv6_[10] = -1;
+				ipv6_[11] = -1;
+			}
+			else if (inet_pton(AF_INET6, std::string(value).c_str(), ipv6_.data()) != 1)
+				xbt_syslog("inet_pton failed: " + std::string(value));
+		}
 		break;
 	case 'l':
 		if (name == "left")
-			m_left = atoll(value.c_str());
-		break;
-	case 'n':
-		if (name == "numwant")
-			m_num_want = atoi(value.c_str());
+			left_ = to_int(value);
 		break;
 	case 'p':
 		if (name == "peer_id" && value.size() == 20)
-			memcpy(m_peer_id, value);
+			memcpy(peer_id_, value);
 		else if (name == "port")
-			m_port = htons(atoi(value.c_str()));
+			port_ = htons(to_int(value));
 		break;
 	case 'u':
 		if (name == "uploaded")
-			m_uploaded = atoll(value.c_str());
+			uploaded_ = to_int(value);
 		break;
 	}
 }
 
-bool Ctracker_input::valid() const
+bool tracker_input_t::valid() const
 {
-	return m_downloaded >= 0
-		&& (m_event != e_completed || !m_left)
-		&& m_info_hash.size() == 20
-		&& m_left >= -1
-		&& m_peer_id.size() == 20
-		&& m_port >= 0
-		&& m_uploaded >= 0;
+	return downloaded_ >= 0
+		&& (event_ != e_completed || !left_)
+		&& info_hash_.size() == 20
+		&& left_ >= -1
+		&& peer_id_.size() == 20
+		&& port_ >= 0
+		&& uploaded_ >= 0;
 }

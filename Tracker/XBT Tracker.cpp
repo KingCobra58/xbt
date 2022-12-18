@@ -3,7 +3,7 @@
 #include "config.h"
 #include "server.h"
 
-std::string g_conf_file = "xbt_tracker.conf";
+static std::string g_conf_file = "xbt_tracker.conf";
 const char* g_service_name = "XBT Tracker";
 
 int main1()
@@ -30,7 +30,7 @@ int main1()
 	try
 	{
 		if (config.m_mysql_host != "-")
-			srv_database().open(config.m_mysql_host, config.m_mysql_user, config.m_mysql_password, config.m_mysql_database, true);
+			srv_database().open(config.m_mysql_host, config.m_mysql_user, config.m_mysql_password, config.m_mysql_database);
 	}
 	catch (bad_query& e)
 	{

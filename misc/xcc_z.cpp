@@ -2,7 +2,6 @@
 
 #include <cstdio>
 #include <string.h>
-#define ZLIB_WINAPI
 #include <zlib.h>
 #include "stream_int.h"
 
@@ -61,9 +60,11 @@ shared_data xcc_z::gzip(data_ref s)
 	return d.substr(0, w - d.data());
 }
 
+/*
 void xcc_z::gzip_out(data_ref s)
 {
 	gzFile f = gzdopen(fileno(stdout), "wb");
 	gzwrite(f, s.data(), s.size());
 	gzflush(f, Z_FINISH);
 }
+*/

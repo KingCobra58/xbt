@@ -21,14 +21,13 @@ const int INADDR_NONE = -1;
 const int MSG_NOSIGNAL = 0;
 #endif
 
-static bool g_start_up_done = false;
-
 Csocket::Csocket(SOCKET s)
 {
 	if (s != INVALID_SOCKET)
 		m_source = std::make_shared<Csocket_source>(s);
 }
 
+/*
 int Csocket::accept(int& h, int& p)
 {
 	sockaddr_in a;
@@ -39,17 +38,25 @@ int Csocket::accept(int& h, int& p)
 		return r;
 	h = a.sin_addr.s_addr;
 	p = a.sin_port;
-	return 0;
+	return r;
 }
+*/
 
 int Csocket::bind(int h, int p)
 {
-	sockaddr_in a;
-  memset(&a, 0, sizeof(a));
+	sockaddr_in a = {};
 	a.sin_family = AF_INET;
 	a.sin_addr.s_addr = h;
 	a.sin_port = p;
-	return ::bind(*this, reinterpret_cast<sockaddr*>(&a), sizeof(sockaddr_in));
+	return ::bind(*this, reinterpret_cast<sockaddr*>(&a), sizeof(a));
+}
+
+int Csocket::bind6(int p)
+{
+	sockaddr_in6 a = {};
+	a.sin6_family = AF_INET6;
+	a.sin6_port = htons(p);
+	return ::bind(*this, reinterpret_cast<sockaddr*>(&a), sizeof(a));
 }
 
 int Csocket::blocking(bool v)
@@ -64,17 +71,16 @@ int Csocket::blocking(bool v)
 
 void Csocket::close()
 {
-	*this = INVALID_SOCKET;
+	m_source.reset();
 }
 
 int Csocket::connect(int h, int p)
 {
-	sockaddr_in a;
-  memset(&a, 0, sizeof(a));
+	sockaddr_in a = {};
 	a.sin_family = AF_INET;
 	a.sin_addr.s_addr = h;
 	a.sin_port = p;
-	return ::connect(*this, reinterpret_cast<sockaddr*>(&a), sizeof(sockaddr_in));
+	return ::connect(*this, reinterpret_cast<sockaddr*>(&a), sizeof(a));
 }
 
 int Csocket::listen()
@@ -86,6 +92,15 @@ const Csocket& Csocket::open(int t, bool _blocking)
 {
 	start_up();
 	*this = socket(AF_INET, t, 0);
+	if (*this != INVALID_SOCKET && !_blocking && blocking(false))
+		close();
+	return *this;
+}
+
+const Csocket& Csocket::open6(int t, bool _blocking)
+{
+	start_up();
+	*this = socket(AF_INET6, t, 0);
 	if (*this != INVALID_SOCKET && !_blocking && blocking(false))
 		close();
 	return *this;
@@ -214,12 +229,31 @@ std::string Csocket::inet_ntoa(int v)
 	return ::inet_ntoa(a);
 }
 
+std::string Csocket::inet_ntoa(std::array<unsigned char, 4> v)
+{
+	std::array<char, INET_ADDRSTRLEN> d;
+	return inet_ntop(AF_INET, v.data(), d.data(), d.size());
+}
+
+std::string Csocket::inet_ntoa(std::array<unsigned char, 16> v)
+{
+	std::array<char, INET6_ADDRSTRLEN> d;
+	return inet_ntop(AF_INET6, v.data(), d.data(), d.size());
+}
+
+std::string Csocket::inet_ntoa(in6_addr v)
+{
+	std::array<char, INET6_ADDRSTRLEN> d;
+	return inet_ntop(AF_INET6, v.s6_addr, d.data(), d.size());
+}
+
 int Csocket::start_up()
 {
-	if (g_start_up_done)
-		return 0;
-	g_start_up_done = true;
 #ifdef WIN32
+	static bool done = false;
+	if (done)
+		return 0;
+	done = true;
 	WSADATA wsadata;
 	if (WSAStartup(MAKEWORD(2, 0), &wsadata))
 		return 1;

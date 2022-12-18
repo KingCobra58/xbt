@@ -9,9 +9,9 @@ public:
 	void send_announce(data_ref);
 	void send_connect(data_ref);
 	void send_scrape(data_ref);
-	void send_error(data_ref, const std::string& msg);
+	void send_error(data_ref, std::string_view msg);
 	Ctransaction(const Csocket&);
 private:
-	Csocket m_s;
-	sockaddr_in m_a;
+	const Csocket& m_s;
+	sockaddr_in6 m_a;
 };
