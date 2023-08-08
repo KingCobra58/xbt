@@ -1,16 +1,20 @@
 #pragma once
 
-class client_t
+class Cserver;
+
+class Cclient
 {
 public:
-  virtual void process_events(int) = 0;
+	virtual void process_events(int) = 0;
 
-  virtual ~client_t() = default;
+	virtual ~Cclient()
+	{
+	}
 
-  const Csocket& s() const
-  {
-    return m_s;
-  }
+	const Csocket& s() const
+	{
+		return m_s;
+	}
 protected:
-  Csocket m_s;
+	Csocket m_s;
 };

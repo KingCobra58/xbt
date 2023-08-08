@@ -2,62 +2,39 @@
 
 #include <map>
 #include <stdexcept>
-#include <xbt/sql_result.h>
-#include <xbt/string_view.h>
+#include "sql_result.h"
 
 class bad_query : public std::runtime_error
 {
 public:
-  using runtime_error::runtime_error;
+	bad_query(const std::string& s) : runtime_error(s)
+	{
+	}
 };
 
 class Cdatabase : boost::noncopyable
 {
-private:
-  MYSQL handle_;
-  std::map<std::string, std::string, std::less<>> names_;
-  std::ostream* query_log_ = NULL;
 public:
-  void open(const std::string& host, const std::string& user, const std::string& password, const std::string& database);
-  std::string_view name(std::string_view) const;
-  Csql_result query(std::string_view);
-  int query_nothrow(std::string_view);
-  void set_name(const std::string&, std::string);
-  void set_query_log(std::ostream*);
-  std::string replace_names(std::string_view) const;
+	void open(const std::string& host, const std::string& user, const std::string& password, const std::string& database, bool echo_errors = false);
+	const std::string& name(const std::string&) const;
+	Csql_result query(const std::string&);
+	void query_nothrow(const std::string&);
+	void set_name(const std::string&, std::string);
+	void set_query_log(std::ostream*);
+	int affected_rows();
+	int insert_id();
+	int select_db(const std::string&);
+	void close();
+	Cdatabase();
+	~Cdatabase();
 
-  Cdatabase()
-  {
-    mysql_init(&handle_);
-  }
-
-  ~Cdatabase()
-  {
-    close();
-  }
-
-  operator MYSQL* ()
-  {
-    return &handle_;
-  }
-
-  void close()
-  {
-    mysql_close(&handle_);
-  }
-
-  int affected_rows()
-  {
-    return mysql_affected_rows(&handle_);
-  }
-
-  int insert_id()
-  {
-    return mysql_insert_id(&handle_);
-  }
-
-  int select_db(const std::string& v)
-  {
-    return mysql_select_db(&handle_, v.c_str());
-  }
+	operator MYSQL*()
+	{
+		return &m_handle;
+	}
+private:
+	bool m_echo_errors;
+	MYSQL m_handle;
+	std::map<std::string, std::string> m_names;
+	std::ostream* m_query_log;
 };

@@ -1,11 +1,11 @@
 #include "xbt/bt_misc.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/foreach.hpp>
 #include <sys/stat.h>
 #include <algorithm>
 #include <cstdio>
 #include <ctime>
-#include <iostream>
 #include <socket.h>
 
 #ifdef WIN32
@@ -18,7 +18,7 @@ std::string escape_string(const std::string& v)
 {
 	std::string w;
 	w.reserve(v.length());
-	for (char i : v)
+	BOOST_FOREACH(char i, v)
 	{
 		if (isgraph(i & 0xff))
 			w += i;
@@ -60,7 +60,7 @@ static int hex_decode(char v)
 	if (v >= 'a' && v <= 'f')
 		return v - 'a' + 10;
 	return -1;
-}
+};
 
 std::string hex_decode(str_ref v)
 {
@@ -84,18 +84,24 @@ std::string hex_encode(int l, int v)
 		v >>= 4;
 	}
 	return r;
-}
+};
 
 std::string n(long long v)
 {
-	return std::to_string(v);
+	char b[21];
+#ifdef WIN32
+	sprintf(b, "%I64d", v);
+#else
+	sprintf(b, "%lld", v);
+#endif
+	return b;
 }
 
 std::string hex_encode(data_ref v)
 {
 	std::string r;
 	r.reserve(v.size() << 1);
-	for (int i : v)
+	BOOST_FOREACH(int i, v)
 		r += hex_encode(2, i);
 	return r;
 }
@@ -103,7 +109,7 @@ std::string hex_encode(data_ref v)
 std::string js_encode(str_ref v)
 {
 	std::string r;
-	for (int i : v)
+	BOOST_FOREACH(int i, v)
 	{
 		switch (i)
 		{
@@ -143,13 +149,13 @@ std::string uri_decode(str_ref v)
 		}
 	}
 	return r;
-}
+};
 
 std::string uri_encode(str_ref v)
 {
 	std::string r;
 	r.reserve(v.size());
-	for (char c : v)
+	BOOST_FOREACH(char c, v)
 	{
 		if (isalpha(c & 0xff) || isdigit(c & 0xff))
 			r += c;
@@ -173,7 +179,7 @@ std::string uri_encode(str_ref v)
 		}
 	}
 	return r;
-}
+};
 
 bool is_private_ipa(int a)
 {
@@ -185,16 +191,11 @@ bool is_private_ipa(int a)
 
 std::string b2a(long long v, const char* postfix)
 {
+	int l;
+	for (l = 0; v < -9999 || v > 999999; l++)
+		v >>= 10;
 	char d[32];
 	char* w = d;
-	if (v < 0)
-	{
-		v = -v;
-		*w++ = '-';
-	}
-	int l = 0;
-	for (; v > 999999; l++)
-		v >>= 10;
 	if (v > 999)
 	{
 		l++;
@@ -209,38 +210,6 @@ std::string b2a(long long v, const char* postfix)
 	else
 		w += sprintf(w, "%d", static_cast<int>(v));
 	const char* a[] = {"", " k", " m", " g", " t", " p", " e", " z", " y"};
-	w += sprintf(w, "%s", a[l]);
-	if (postfix)
-		w += sprintf(w, "%s%s", l ? "" : " ", postfix);
-	return d;
-}
-
-std::string n2a(long long v, const char* postfix)
-{
-	char d[32];
-	char* w = d;
-	if (v < 0)
-	{
-		v = -v;
-		*w++ = '-';
-	}
-	int l = 0;
-	for (; v > 999999; l++)
-		v /= 1000;
-	if (v > 999)
-	{
-		l++;
-		int b = static_cast<int>(v % 1000 / 10);
-		v /= 1000;
-		w += sprintf(w, "%d", static_cast<int>(v));
-		if (v < 10 && b % 10)
-			w += sprintf(w, ".%02d", b);
-		else if (v < 100 && b > 9)
-			w += sprintf(w, ".%d", b / 10);
-	}
-	else
-		w += sprintf(w, "%d", static_cast<int>(v));
-	const char* a [] = { "", " k", " m", " g", " t", " p", " e", " z", " y" };
 	w += sprintf(w, "%s", a[l]);
 	if (postfix)
 		w += sprintf(w, "%s%s", l ? "" : " ", postfix);
@@ -331,7 +300,7 @@ std::string time2a(time_t v)
 	const tm* date = localtime(&v);
 	if (!date)
 		return std::string();
-	char b[72];
+	char b[20];
 	sprintf(b, "%04d-%02d-%02d %02d:%02d:%02d", date->tm_year + 1900, date->tm_mon + 1, date->tm_mday, date->tm_hour, date->tm_min, date->tm_sec);
 	return b;
 }
@@ -375,6 +344,12 @@ int hms2i(int h, int m, int s)
 	return 60 * (h + 60 * m) + s;
 }
 
+int xbt_atoi(const std::string& a)
+{
+	int i = atoi(a.c_str());
+	return n(i) == a ? i : 0;
+}
+
 std::string xbt_version2a(int v)
 {
 	return n(v / 100) + "." + n(v / 10 % 10) + "." + n(v % 10);
@@ -389,7 +364,7 @@ std::string mk_sname(std::string v)
 	std::replace(v.begin(), v.end(), '3', 'e');
 	std::replace(v.begin(), v.end(), '4', 'a');
 	std::replace(v.begin(), v.end(), 'l', 'i');
-	for (size_t i = 1; i < v.size(); )
+	for (int i = 1; i < v.size(); )
 	{
 		if (v[i] == v[i - 1])
 			v.erase(i, 1);
@@ -401,9 +376,7 @@ std::string mk_sname(std::string v)
 
 void xbt_syslog(const std::string& v)
 {
-#ifdef WIN32
-	std::cerr << v << std::endl;
-#else
-	syslog(LOG_ERR, "%s", v.c_str());
+#ifndef WIN32
+		syslog(LOG_ERR, "%s", v.c_str());
 #endif
 }
