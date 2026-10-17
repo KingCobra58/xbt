@@ -1,0 +1,2 @@
+# Example allowed IP range; rename to vpn_guard_allow_ipv4.txt
+192.0.2.0/24

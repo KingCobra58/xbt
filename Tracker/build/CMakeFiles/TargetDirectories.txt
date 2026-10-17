@@ -1,0 +1,9 @@
+/root/xbt/Tracker/build/CMakeFiles/xbt_tracker.dir
+/root/xbt/Tracker/build/CMakeFiles/package.dir
+/root/xbt/Tracker/build/CMakeFiles/package_source.dir
+/root/xbt/Tracker/build/CMakeFiles/edit_cache.dir
+/root/xbt/Tracker/build/CMakeFiles/rebuild_cache.dir
+/root/xbt/Tracker/build/CMakeFiles/list_install_components.dir
+/root/xbt/Tracker/build/CMakeFiles/install.dir
+/root/xbt/Tracker/build/CMakeFiles/install/local.dir
+/root/xbt/Tracker/build/CMakeFiles/install/strip.dir

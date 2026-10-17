@@ -1,5 +1,8 @@
 <?php
-	$mysql['host'] = 'localhost';
-	$mysql['user'] = 'xbt';
-	$mysql['password'] = '';
-	$mysql['db'] = 'xbt';
+$mysql = array(
+    'host' => 'localhost',
+    'port' => 3306,
+    'user' => 'xbt',
+    'password' => '',
+    'db' => 'xbt',
+);

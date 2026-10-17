@@ -1,12 +1,16 @@
 <?php
-	require_once('xbt_common.php');
+	require_once __DIR__ . '/xbt_common.php';
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
 <link rel=stylesheet href="xbt.css">
 <title>XBT Files</title>
 <?php
 	$result = db_query_first("select sum(completed) completed, sum(leechers) leechers, sum(seeders) seeders, sum(leechers or seeders) torrents from xbt_files");
-	$result['peers'] = $result['leechers'] + $result['seeders'];
+	$result['completed'] = isset($result['completed']) ? (int) $result['completed'] : 0;
+		$result['leechers'] = isset($result['leechers']) ? (int) $result['leechers'] : 0;
+		$result['seeders'] = isset($result['seeders']) ? (int) $result['seeders'] : 0;
+		$result['torrents'] = isset($result['torrents']) ? (int) $result['torrents'] : 0;
+		$result['peers'] = $result['leechers'] + $result['seeders'];
 	echo('<table>');
 	printf('<tr><th align=right>completed<td align=right>%d<td>', $result['completed']);
 	printf('<tr><th align=right>peers<td align=right>%d<td align=right>100 %%', $result['peers']);
@@ -29,7 +33,7 @@
 	echo('<th>completed');
 	echo('<th>modified');
 	echo('<th>created');
-	while ($result = mysql_fetch_assoc($results))
+	while ($result = db_fetch_assoc($results))
 	{
 		echo('<tr>');
 		printf('<td align=right>%d', $result['fid']);

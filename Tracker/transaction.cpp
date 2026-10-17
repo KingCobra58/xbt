@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "transaction.h"
+#include "vpn_udp_receive_boundary.h"
+#include "vpn_guard_policy.h"
 
 #include <bt_strings.h>
 #include <sha1.h>
@@ -27,14 +29,22 @@ void Ctransaction::recv()
 	char b[cb_b];
 	while (1)
 	{
-		socklen_t cb_a = sizeof(sockaddr_in);
-		int r = m_s.recvfrom(mutable_data_ref(b, cb_b), reinterpret_cast<sockaddr*>(&m_a), &cb_a);
+		sockaddr_storage remote{};
+		socklen_t cb_a = sizeof(remote);
+		int r = m_s.recvfrom(mutable_data_ref(b, cb_b), reinterpret_cast<sockaddr*>(&remote), &cb_a);
 		if (r == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() != WSAEWOULDBLOCK)
 				std::cerr << "recv failed: " << Csocket::error2a(WSAGetLastError()) << std::endl;
 			return;
 		}
+		// Only normalized IPv4 reaches legacy UDP transaction and SQL logic.
+		const auto peer = vpn_guard::prepare_udp_receive(reinterpret_cast<const sockaddr*>(&remote), cb_a);
+		if (peer.route != vpn_guard::handler_route::legacy_ipv4)
+			continue;
+		m_a = peer.legacy_peer;
+		if (fm_vpn::denied_ipv4(m_a.sin_addr.s_addr, "udp"))
+			continue;
 		if (r < uti_size)
 			return;
 		switch (read_int(4, b + uti_action, b + r))

@@ -1,3 +1,5 @@
+#include "vpn_torrent_peer_store.h"
+#include "vpn_legacy_bridge.h"
 #include "stdafx.h"
 #include "server.h"
 
@@ -5,6 +7,8 @@
 #include "connection.h"
 #include "epoll.h"
 #include "transaction.h"
+#include "vpn_tcp_accept_boundary.h"
+#include "vpn_guard_policy.h"
 
 namespace boost
 {
@@ -410,7 +414,7 @@ void write_db_users()
 			+ "  completed_time = if(values(completed_time) = -1, completed_time, values(completed_time)),"
 			+ "  down_rate = if(values(down_rate) = -1, down_rate, values(down_rate)),"
 			+ "  up_rate = if(values(up_rate) = -1, up_rate, values(up_rate)),"
-			+ "  peer_id = if(values(peer_id) = -1, peer_id, values(peer_id)),"
+			+ "  peer_id = values(peer_id),"
 			+ "  ipa = if(values(ipa) = -1, ipa, values(ipa)),"  		 
 			+ "  port = if(values(port) = -1, port, values(port)),"  		
 			+ "  mtime = if(values(mtime) = -1, mtime, values(mtime))");
@@ -459,6 +463,8 @@ int test_sql()
 	return 1;
 }
 
+vpn_guard::torrent_peer_store g_vpn_shadow_peers; // IPv4 shadow only; legacy map authoritative
+
 void clean_up(t_torrent& t, time_t time)
 {
 	for (auto i = t.peers.begin(); i != t.peers.end(); )
@@ -480,8 +486,11 @@ void clean_up(t_torrent& t, time_t time)
 
 void clean_up()
 {
+	const time_t cutoff = srv_time() - static_cast<int>(1.5 * m_config.m_announce_interval);
 	BOOST_FOREACH(auto& i, m_torrents)
-		clean_up(i.second, srv_time() - static_cast<int>(1.5 * m_config.m_announce_interval));
+		clean_up(i.second, cutoff);
+	// Shadow-only expiry; does not change authoritative peer map or SQL.
+	g_vpn_shadow_peers.expire_before(cutoff > 0 ? static_cast<std::uint64_t>(cutoff) : 0);
 	m_clean_up_time = srv_time();
 }
 
@@ -676,10 +685,10 @@ int srv_run(const std::string& table_prefix, bool use_sql, const std::string& co
 
 void accept(const Csocket& l)
 {
-	sockaddr_in a;
+	sockaddr_storage a{};
 	while (1)
 	{
-		socklen_t cb_a = sizeof(sockaddr_in);
+		socklen_t cb_a = sizeof(a);
 #ifdef SOCK_NONBLOCK
 		Csocket s = accept4(l, reinterpret_cast<sockaddr*>(&a), &cb_a, SOCK_NONBLOCK);
 #else
@@ -702,7 +711,23 @@ void accept(const Csocket& l)
 		if (s.blocking(false))
 			std::cerr << "ioctlsocket failed: " << Csocket::error2a(WSAGetLastError()) << std::endl;
 #endif
-		std::auto_ptr<Cconnection> connection(new Cconnection(s, a));
+		// Keep native IPv6 out of the legacy IPv4-only connection, peer map and SQL paths.
+		const vpn_guard::tcp_accept_result peer = vpn_guard::prepare_tcp_accept(
+			reinterpret_cast<const sockaddr*>(&a), cb_a);
+		if (peer.route != vpn_guard::handler_route::legacy_ipv4)
+		{
+			// Closing a deferred IPv6 connection is intentional until full dual-stack
+			// announce, storage and database support is integrated.
+			::closesocket(s);
+			continue;
+		}
+		// Apply the same IPv4 policy to TCP as to UDP before parsing any request.
+		if (fm_vpn::denied_ipv4(peer.legacy_peer.sin_addr.s_addr, "tcp"))
+		{
+			::closesocket(s);
+			continue;
+		}
+		std::auto_ptr<Cconnection> connection(new Cconnection(s, peer.legacy_peer));
 		connection->process_events(EPOLLIN);
 		if (connection->s() != INVALID_SOCKET)
 		{
@@ -829,6 +854,23 @@ std::string srv_insert_peer(const Ctracker_input& v, bool udp, t_user* user)
 		if (user)
 			(peer.left ? user->incompletes : user->completes)++;
 		peer.mtime = srv_time();
+	}
+	// v17.9: IPv4-only shadow index, updated AFTER successful legacy accounting.
+	// Legacy file.peers and SQL remain authoritative. No IPv6 announce acceptance.
+	// A separate map has memory overhead and must not be used for live peer replies.
+	{
+		vpn_guard::torrent_peer_store& shadow_peers = g_vpn_shadow_peers;
+		vpn_guard::peer_identity shadow_endpoint;
+		if (v.m_info_hash.size() == 20 &&
+			vpn_guard::legacy_ipv4_identity(v.m_ipa, v.m_port, shadow_endpoint))
+		{
+			const std::uint32_t shadow_uid = user ? user->uid : 0;
+			if (v.m_event == Ctracker_input::e_stopped)
+				shadow_peers.erase(v.m_info_hash, shadow_endpoint, shadow_uid);
+			else
+				shadow_peers.upsert(v.m_info_hash, shadow_endpoint, shadow_uid,
+					std::string(v.m_peer_id.data(), v.m_peer_id.size()), static_cast<std::uint64_t>(srv_time()));
+		}
 	}
 	if (v.m_event == Ctracker_input::e_completed)
 		file.completed++;

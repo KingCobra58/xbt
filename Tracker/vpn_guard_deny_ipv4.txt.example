@@ -1,0 +1,2 @@
+# Example blocked IP range; rename to vpn_guard_deny_ipv4.txt
+203.0.113.0/24

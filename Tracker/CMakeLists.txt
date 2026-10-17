@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.4)
 project(xbt-tracker)
 set(CMAKE_BUILD_TYPE release)
 # set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_CXX_FLAGS -std=c++0x)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CPACK_GENERATOR DEB)
 set(CPACK_PACKAGE_CONTACT "Olaf van der Spek <olafvdspek@gmail.com>")
 set(CPACK_STRIP_FILES true)
@@ -29,6 +30,18 @@ add_executable(
 	tracker_input.cpp
 	transaction.cpp
 	"XBT Tracker.cpp"
+	vpn_announce_address.cpp
+	vpn_announce_handler_gate.cpp
+	vpn_announce_ingress.cpp
+	vpn_peer_identity.cpp
+	vpn_peer_store.cpp
+    vpn_torrent_peer_store.cpp
+    vpn_legacy_bridge.cpp
+	vpn_compact_peers.cpp
+	vpn_socket_address.cpp
+	vpn_tcp_accept_boundary.cpp
+	vpn_udp_receive_boundary.cpp
+
 )
 target_link_libraries(xbt_tracker mysqlclient z)
 install(TARGETS xbt_tracker DESTINATION bin)
